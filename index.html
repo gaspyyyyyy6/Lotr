@@ -29,16 +29,15 @@
             crs: L.CRS.Simple
         });
         
-        var imageUrl = 'https://i.imgur.com/d0lSTs8.jpeg'; // Remplace par l'URL de ta carte
-        var imageBounds = [[-50, -68], [50, 68]];  // Ajuste selon ta carte
+        var imageUrl = 'URL_DE_TA_CARTE';
+        var imageBounds = [[-100, -137], [100, 137]];
         L.imageOverlay(imageUrl, imageBounds).addTo(map);
         map.fitBounds(imageBounds);
 
-        // Fonction pour ajouter un point interactif avec légende et options de style
-        function ajouterPoint(lat, lon, nom, desc, couleur, forme, emoji) {
+        function ajouterPoint(lat, lon, nom, desc, couleur, emoji) {
             let icon = L.divIcon({
                 className: 'custom-marker',
-                html: `<div style="font-size: 20px;">${emoji || '⚫'}</div>`
+                html: `<div style="font-size: 20px; color: ${couleur};">${emoji}</div>`
             });
             
             let marker = L.marker([lat, lon], { icon: icon, draggable: true }).addTo(map)
@@ -47,9 +46,34 @@
             marker.on('dragend', function (e) {
                 console.log(`Nouveau point de ${nom}:`, e.target.getLatLng());
             });
+
+            sauvegarderPoints();
         }
 
-        // Interface utilisateur pour ajouter des points dynamiquement
+        function sauvegarderPoints() {
+            let points = [];
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker) {
+                    points.push({
+                        lat: layer.getLatLng().lat,
+                        lon: layer.getLatLng().lng,
+                        nom: layer.getPopup().getContent().split('<br>')[0].replace('<b>', '').replace('</b>', ''),
+                        desc: layer.getPopup().getContent().split('<br>')[1],
+                        couleur: layer.options.icon.options.html.match(/color: (.*?);/)[1],
+                        emoji: layer.options.icon.options.html.match(/>(.*?)<\/div>/)[1]
+                    });
+                }
+            });
+            localStorage.setItem('pointsCarte', JSON.stringify(points));
+        }
+
+        function chargerPoints() {
+            let points = JSON.parse(localStorage.getItem('pointsCarte')) || [];
+            points.forEach(point => {
+                ajouterPoint(point.lat, point.lon, point.nom, point.desc, point.couleur, point.emoji);
+            });
+        }
+
         var controlDiv = document.createElement('div');
         controlDiv.className = 'legend';
         controlDiv.innerHTML = `
@@ -58,7 +82,22 @@
             <label>Description:</label> <input type="text" id="pointDesc" /><br>
             <label>Latitude:</label> <input type="number" id="pointLat" /><br>
             <label>Longitude:</label> <input type="number" id="pointLon" /><br>
-            <label>Emoji:</label> <input type="text" id="pointEmoji" placeholder="⚔️" /><br>
+            <label>Emoji:</label>
+            <select id="pointEmoji">
+                <option value="⚔️">⚔️ Épée</option>
+                <option value="💀">💀 Crâne</option>
+                <option value="🪦">🪦 Tombe</option>
+                <option value="🔥">🔥 Feu</option>
+                <option value="📜">📜 Parchemin</option>
+            </select><br>
+            <label>Couleur:</label>
+            <select id="pointCouleur">
+                <option value="red">Rouge</option>
+                <option value="blue">Bleu</option>
+                <option value="green">Vert</option>
+                <option value="yellow">Jaune</option>
+                <option value="white">Blanc</option>
+            </select><br>
             <button onclick="ajouterPointDepuisForm()">Ajouter</button>
         `;
         document.body.appendChild(controlDiv);
@@ -69,10 +108,13 @@
             let lat = parseFloat(document.getElementById('pointLat').value);
             let lon = parseFloat(document.getElementById('pointLon').value);
             let emoji = document.getElementById('pointEmoji').value;
+            let couleur = document.getElementById('pointCouleur').value;
             if (nom && desc && !isNaN(lat) && !isNaN(lon)) {
-                ajouterPoint(lat, lon, nom, desc, '', '', emoji);
+                ajouterPoint(lat, lon, nom, desc, couleur, emoji);
             }
         }
+
+        chargerPoints();
     </script>
 </body>
 </html>
