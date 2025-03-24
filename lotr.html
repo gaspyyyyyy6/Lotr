@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte Interactive - Terre du Milieu</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 100vh; }
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map', {
+            minZoom: 2,
+            maxZoom: 5,
+            center: [0, 0],
+            zoom: 2,
+            crs: L.CRS.Simple
+        });
+        
+        var imageUrl = 'URL_DE_TA_CARTE'; // Remplace par l'URL de ta carte
+        var imageBounds = [[-1000, -1000], [1000, 1000]]; // Ajuste selon ta carte
+        L.imageOverlay(imageUrl, imageBounds).addTo(map);
+        map.fitBounds(imageBounds);
+
+        // Fonction pour ajouter un point interactif avec légende et options de style
+        function ajouterPoint(lat, lon, nom, desc, couleur, forme, emoji) {
+            let icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="font-size: 20px;">${emoji || '⚫'}</div>`
+            });
+            
+            let marker = L.marker([lat, lon], { icon: icon, draggable: true }).addTo(map)
+              .bindPopup(`<b>${nom}</b><br>${desc}`);
+            
+            marker.on('dragend', function (e) {
+                console.log(`Nouveau point de ${nom}:`, e.target.getLatLng());
+            });
+        }
+
+        // Interface utilisateur pour ajouter des points dynamiquement
+        var controlDiv = document.createElement('div');
+        controlDiv.className = 'legend';
+        controlDiv.innerHTML = `
+            <h3>Ajouter un point</h3>
+            <label>Nom:</label> <input type="text" id="pointNom" /><br>
+            <label>Description:</label> <input type="text" id="pointDesc" /><br>
+            <label>Latitude:</label> <input type="number" id="pointLat" /><br>
+            <label>Longitude:</label> <input type="number" id="pointLon" /><br>
+            <label>Emoji:</label> <input type="text" id="pointEmoji" placeholder="⚔️" /><br>
+            <button onclick="ajouterPointDepuisForm()">Ajouter</button>
+        `;
+        document.body.appendChild(controlDiv);
+
+        function ajouterPointDepuisForm() {
+            let nom = document.getElementById('pointNom').value;
+            let desc = document.getElementById('pointDesc').value;
+            let lat = parseFloat(document.getElementById('pointLat').value);
+            let lon = parseFloat(document.getElementById('pointLon').value);
+            let emoji = document.getElementById('pointEmoji').value;
+            if (nom && desc && !isNaN(lat) && !isNaN(lon)) {
+                ajouterPoint(lat, lon, nom, desc, '', '', emoji);
+            }
+        }
+    </script>
+</body>
+</html>
