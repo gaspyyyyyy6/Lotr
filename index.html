@@ -283,7 +283,7 @@
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
-            Authorization: 'Bearer ${GIT_TOKEN}',
+            Authorization: 'Bearer ${process.env.GIT_TOKEN}',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
