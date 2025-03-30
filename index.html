@@ -212,28 +212,28 @@
       }
     });
 
-  function mettreAJourClassement() {
-    const classement = document.getElementById('classement');
-    classement.innerHTML = ''; // Clear previous content
+    function mettreAJourClassement() {
+      const classement = document.getElementById('classement');
+      classement.innerHTML = ''; // Clear previous content
 
-    // Sort territories by descending area
-    territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
-      const li = document.createElement('li');
-      li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant} - Superficie: ${t.superficie.toFixed(2)}`;
-      classement.appendChild(li);
-    });
+      // Sort territories by descending area
+      territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
+        const li = document.createElement('li');
+        li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant} - Superficie: ${t.superficie.toFixed(2)}`;
+        classement.appendChild(li);
+      });
 
-    console.log("Classement mis à jour:", territoires); // Debug log
-  }
-  function afficherClassement() {
-    const classement = document.getElementById('classement');
-    if (classement.style.display === 'none' || classement.style.display === '') {
-      classement.style.display = 'block'; // Show ranking
-      mettreAJourClassement(); // Update ranking
-    } else {
-      classement.style.display = 'none'; // Hide ranking
+      console.log("Classement mis à jour:", territoires); // Debug log
     }
-  }
+    function afficherClassement() {
+      const classement = document.getElementById('classement');
+      if (classement.style.display === 'none' || classement.style.display === '') {
+        classement.style.display = 'block'; // Show ranking
+        mettreAJourClassement(); // Update ranking
+      } else {
+        classement.style.display = 'none'; // Hide ranking
+      }
+    }
 
 
 
@@ -249,13 +249,13 @@
 
     async function mettreAJourFichierGitHub() {
       const url = 'https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json';
-      const data = { points, territoires };
+      const data = { points, territoires }; // Replace this with your actual data
 
       try {
         console.log("Step 1: Fetching SHA...");
         const response = await fetch(url, {
           headers: {
-            Authorization: `Bearer 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`
+            Authorization: `Bearer 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` // Your personal token
           }
         });
 
@@ -267,17 +267,19 @@
         }
 
         const fileData = await response.json();
-        const sha = "f2efd6248d33c964eb709f2c865d778fba09595a"; // File's current SHA
+        const sha = fileData.sha; // Dynamically retrieve the current SHA
         console.log("Step 2: SHA récupérée :", sha);
 
-        const updatedContent = btoa(JSON.stringify(data, null, 2));
+        console.log("Step 3: Encoding content to Base64...");
+        const jsonData = JSON.stringify(data, null, 2); // Convert `data` to JSON
+        const updatedContent = btoa(unescape(encodeURIComponent(jsonData))); // Handle special characters safely
         console.log("Step 3: Base64 Content Encoded:", updatedContent);
 
         console.log("Step 4: Sending update request...");
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${secrets.token}`,
+            Authorization: `Bearer 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`, // Your personal token
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -297,9 +299,10 @@
         }
       } catch (error) {
         console.error("Unexpected error:", error);
-        alert("Une erreur est survenue lors de la sauvegarde des données.");
+        alert(`Une erreur inattendue : ${error.message}`);
       }
     }
+
 
 
 
