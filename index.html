@@ -19,6 +19,7 @@
             font-size: 16px;
             z-index: 1000;
             transition: right 0.3s;
+            transform: translateY(-50%);
         }
         .menu.active {
             right: 0;
@@ -26,12 +27,13 @@
         .menu-toggle {
             position: absolute;
             top: 50%;
-            right: 0;
+            right: 220px;
             background: white;
-            padding: 5px;
+            padding: 10px;
             border-radius: 5px 0 0 5px;
             cursor: pointer;
             box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+            z-index: 1001;
         }
     </style>
 </head>
@@ -43,7 +45,7 @@
         <button onclick="activerMode('territoire')">Dessiner un territoire</button>
         <button onclick="afficherClassement()">Afficher Classement</button>
         <h3>Classement des territoires</h3>
-        <ul id="classement" style="display: none;"></ul>
+        <ul id="classement"></ul>
     </div>
     
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -77,87 +79,22 @@
         }
 
         let points = [];
+        let territoires = [];
+        let drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
         function ajouterPoint(lat, lon) {
             let nom = prompt("Nom du point :");
             let description = prompt("Description du point :");
             if (nom && description) {
                 let marker = L.marker([lat, lon]).addTo(map);
-                marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
+                marker.bindPopup(`<b>${nom}</b><br>${description}`);
                 points.push({ lat, lon, nom, description });
                 sauvegarderDonnees();
             }
         }
-        function supprimerPoint(lat, lon) {
-            map.eachLayer(layer => {
-                if (layer instanceof L.Marker) {
-                    let pos = layer.getLatLng();
-                    if (pos.lat === lat && pos.lng === lon) {
-                        map.removeLayer(layer);
-                    }
-                }
-            });
-            points = points.filter(p => !(p.lat === lat && p.lon === lon));
-            sauvegarderDonnees();
-        }
-        map.on('click', function (e) {
-            if (mode === 'point') {
-                ajouterPoint(e.latlng.lat, e.latlng.lng);
-            }
-        });
 
-        var drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-        var territoires = [];
-
-        function dessinerTerritoire() {
-            let isDrawing = true;
-            let tempLayer = L.polyline([], { color: 'blue', weight: 2 }).addTo(map);
-            let points = [];
-            
-            function onMouseMove(e) {
-                if (!isDrawing) return;
-                let latlngs = [...points, [e.latlng.lat, e.latlng.lng]];
-                tempLayer.setLatLngs(latlngs);
-            }
-            
-            function onClick(e) {
-                if (!isDrawing) return;
-                points.push([e.latlng.lat, e.latlng.lng]);
-                tempLayer.setLatLngs(points);
-            }
-            
-            function onDoubleClick() {
-                isDrawing = false;
-                map.off('mousemove', onMouseMove);
-                map.off('click', onClick);
-                map.off('dblclick', onDoubleClick);
-                map.dragging.enable();
-                
-                let nom = prompt("Nom du territoire :");
-                let dirigeant = prompt("Dirigeant :");
-                let description = prompt("Description :");
-                
-                if (nom && dirigeant && description) {
-                    let polygon = L.polygon(points, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-                    polygon.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br><button onclick='supprimerTerritoire("${nom}")'>Supprimer</button>`).openPopup();
-                    drawnItems.addLayer(polygon);
-                    territoires.push({ nom, dirigeant, superficie: L.GeometryUtil.geodesicArea(points) });
-                    map.removeLayer(tempLayer);
-                    sauvegarderDonnees();
-                }
-            }
-            
-            map.on('mousemove', onMouseMove);
-            map.on('click', onClick);
-            map.on('dblclick', onDoubleClick);
-        }
-        
         function afficherClassement() {
-            let classement = document.getElementById('classement');
-            classement.style.display = classement.style.display === 'none' ? 'block' : 'none';
-            mettreAJourClassement();
-        }
-        function mettreAJourClassement() {
             let classement = document.getElementById('classement');
             classement.innerHTML = '';
             territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
@@ -166,6 +103,7 @@
                 classement.appendChild(li);
             });
         }
+
         function sauvegarderDonnees() {
             localStorage.setItem('points', JSON.stringify(points));
             localStorage.setItem('territoires', JSON.stringify(territoires));
@@ -173,7 +111,16 @@
         function chargerDonnees() {
             points = JSON.parse(localStorage.getItem('points')) || [];
             territoires = JSON.parse(localStorage.getItem('territoires')) || [];
-            mettreAJourClassement();
+            points.forEach(p => {
+                let marker = L.marker([p.lat, p.lon]).addTo(map);
+                marker.bindPopup(`<b>${p.nom}</b><br>${p.description}`);
+            });
+            territoires.forEach(t => {
+                let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
+                drawnItems.addLayer(polygon);
+                polygon.bindPopup(`<b>${t.nom}</b><br>Dirigeant: ${t.dirigeant}`);
+            });
+            afficherClassement();
         }
         window.onload = chargerDonnees;
     </script>
