@@ -78,7 +78,7 @@
 
         let points = [];
         function ajouterPoint(lat, lon) {
-            let nom = prompt("Nom du point :");
+            let nom = prompt("Nom du point :") + " ⚔️";
             let description = prompt("Description du point :");
             if (nom && description) {
                 let marker = L.marker([lat, lon]).addTo(map);
@@ -109,54 +109,34 @@
         map.addLayer(drawnItems);
         var territoires = [];
 
-        function dessinerTerritoire() {
-            let isDrawing = true;
-            let tempLayer = L.polyline([], { color: 'blue', weight: 2 }).addTo(map);
-            let points = [];
-            
-            function onMouseMove(e) {
-                if (!isDrawing) return;
-                let latlngs = [...points, [e.latlng.lat, e.latlng.lng]];
-                tempLayer.setLatLngs(latlngs);
-            }
-            
-            function onClick(e) {
-                if (!isDrawing) return;
-                points.push([e.latlng.lat, e.latlng.lng]);
-                tempLayer.setLatLngs(points);
-            }
-            
-            function onDoubleClick() {
-                isDrawing = false;
-                map.off('mousemove', onMouseMove);
-                map.off('click', onClick);
-                map.off('dblclick', onDoubleClick);
-                map.dragging.enable();
-                
-                let nom = prompt("Nom du territoire :");
-                let dirigeant = prompt("Dirigeant :");
-                let description = prompt("Description :");
-                
-                if (nom && dirigeant && description) {
-                    let polygon = L.polygon(points, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-                    polygon.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br><button onclick='supprimerTerritoire("${nom}")'>Supprimer</button>`).openPopup();
-                    drawnItems.addLayer(polygon);
-                    territoires.push({ nom, dirigeant, superficie: L.GeometryUtil.geodesicArea(points) });
-                    map.removeLayer(tempLayer);
-                    sauvegarderDonnees();
-                }
-            }
-            
-            map.on('mousemove', onMouseMove);
-            map.on('click', onClick);
-            map.on('dblclick', onDoubleClick);
+        function sauvegarderDonnees() {
+            let data = { points, territoires };
+            fetch('lotr.json', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        }
+
+        function chargerDonnees() {
+            fetch('lotr.json')
+                .then(response => response.json())
+                .then(data => {
+                    points = data.points || [];
+                    territoires = data.territoires || [];
+                    points.forEach(p => {
+                        let marker = L.marker([p.lat, p.lon]).addTo(map);
+                        marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
+                    });
+                    territoires.forEach(t => {
+                        let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
+                        polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}`);
+                    });
+                    mettreAJourClassement();
+                })
+                .catch(error => console.error("Erreur lors du chargement des données :", error));
         }
         
-        function afficherClassement() {
-            let classement = document.getElementById('classement');
-            classement.style.display = classement.style.display === 'none' ? 'block' : 'none';
-            mettreAJourClassement();
-        }
         function mettreAJourClassement() {
             let classement = document.getElementById('classement');
             classement.innerHTML = '';
@@ -166,15 +146,7 @@
                 classement.appendChild(li);
             });
         }
-        function sauvegarderDonnees() {
-            localStorage.setItem('points', JSON.stringify(points));
-            localStorage.setItem('territoires', JSON.stringify(territoires));
-        }
-        function chargerDonnees() {
-            points = JSON.parse(localStorage.getItem('points')) || [];
-            territoires = JSON.parse(localStorage.getItem('territoires')) || [];
-            mettreAJourClassement();
-        }
+        
         window.onload = chargerDonnees;
     </script>
 </body>
