@@ -207,17 +207,24 @@
 
     async function mettreAJourFichierGitHub() {
       const url = 'https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json';
-      const data = { points, territoires };
+      const data = { points, territoires }; // Data to save
 
       try {
-        // Fetch current SHA of the file
+        // Fetch the current SHA of the file
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${secrets.ENREGISTREMENTS}` }
         });
-        const fileData = await response.json();
-        const sha = fileData.sha;
 
-        // Update the file with new data
+        if (!response.ok) {
+          console.error("Erreur lors de la récupération de la SHA :", await response.text());
+          return;
+        }
+
+        const fileData = await response.json();
+        const sha = fileData.sha; // Retrieved SHA
+        console.log("SHA récupérée :", sha);
+
+        // Prepare the updated file content
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
@@ -226,7 +233,7 @@
           },
           body: JSON.stringify({
             message: 'Mise à jour des points et territoires',
-            content: btoa(JSON.stringify(data, null, 2)),
+            content: btoa(JSON.stringify(data, null, 2)), // Base64 encoding
             sha: sha
           })
         });
@@ -240,6 +247,7 @@
         console.error("Erreur lors de la sauvegarde :", error);
       }
     }
+
 
     window.onload = () => {
       console.log("Carte chargée !");
