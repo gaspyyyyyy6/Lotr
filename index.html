@@ -82,12 +82,15 @@
     function activerMode(nouveauMode) {
       mode = nouveauMode;
       if (mode === 'territoire') {
+        console.log("Territory mode activated"); // Debug log
         map.dragging.disable();
-        map.addControl(drawControl);
+        map.addControl(drawControl); // Add the draw control for polygons
       } else if (mode === 'point') {
+        console.log("Point mode activated"); // Debug log
         map.dragging.enable();
       }
     }
+
 
     function ajouterPoint(lat, lon) {
       const nom = prompt("Nom du point :") + " ⚔️";
