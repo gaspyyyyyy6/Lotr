@@ -92,33 +92,45 @@
       }
     }
 
-    function afficherNomsTerritoires() {
-      if (territoires.length === 0) {
-        alert("Aucun territoire n'a été ajouté pour le moment.");
-        return;
-      }
+    let nomsAffiches = false; // Track if names are displayed
+    let nomMarkers = []; // Keep references to name markers
 
-      // Loop through all territories
-      territoires.forEach(territoire => {
-        // Find the matching polygon in the drawnItems layer
-        const matchingPolygon = drawnItems.getLayers().find(layer => {
-          const layerCoords = layer.getLatLngs()[0].map(coord => [coord.lat, coord.lng]);
-          const territoireCoords = territoire.coords.map(coord => [coord[0], coord[1]]);
-          return JSON.stringify(layerCoords) === JSON.stringify(territoireCoords);
+    function afficherNomsTerritoires() {
+      if (nomsAffiches) {
+        // Remove all name markers
+        nomMarkers.forEach(marker => map.removeLayer(marker));
+        nomMarkers = []; // Clear the marker references
+        nomsAffiches = false; // Update the flag
+      } else {
+        if (territoires.length === 0) {
+          alert("Aucun territoire n'a été ajouté pour le moment.");
+          return;
+        }
+
+        // Loop through all territories and add markers for names
+        territoires.forEach(territoire => {
+          const matchingPolygon = drawnItems.getLayers().find(layer => {
+            const layerCoords = layer.getLatLngs()[0].map(coord => [coord.lat, coord.lng]);
+            const territoireCoords = territoire.coords.map(coord => [coord[0], coord[1]]);
+            return JSON.stringify(layerCoords) === JSON.stringify(territoireCoords);
+          });
+
+          if (matchingPolygon) {
+            const center = matchingPolygon.getBounds().getCenter();
+            const label = L.marker(center, {
+              icon: L.divIcon({
+                className: 'territory-label',
+                html: `<b>${territoire.nom}</b>`,
+                iconSize: [100, 30]
+              })
+            });
+            label.addTo(map);
+            nomMarkers.push(label); // Store the marker reference
+          }
         });
 
-        if (matchingPolygon) {
-          // Add a label with the territory name
-          const center = matchingPolygon.getBounds().getCenter(); // Get the polygon's center
-          L.marker(center, {
-            icon: L.divIcon({
-              className: 'territory-label',
-              html: `<b>${territoire.nom}</b>`,
-              iconSize: [100, 30]
-            })
-          }).addTo(map);
-        }
-      });
+        nomsAffiches = true; // Update the flag
+      }
     }
 
 
