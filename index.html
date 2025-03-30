@@ -252,32 +252,32 @@
       const data = { points, territoires };
 
       try {
-        console.log("Fetching SHA...");
+        console.log("Step 1: Fetching SHA...");
         const response = await fetch(url, {
           headers: {
-            Authorization: `Bearer ${secrets.token}`
+            Authorization: `Bearer YOUR_PERSONAL_ACCESS_TOKEN`
           }
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("Erreur lors de la récupération de la SHA :", errorText);
-          alert("Erreur lors de la récupération des données du fichier. Vérifiez le token ou l'URL.");
+          console.error("Step 1: Failed to fetch SHA:", errorText);
+          alert("Erreur lors de la récupération des données du fichier.");
           return;
         }
 
         const fileData = await response.json();
-        const sha = fileData.sha;
-        console.log("SHA récupérée :", sha);
+        const sha = fileData.sha; // File's current SHA
+        console.log("Step 2: SHA récupérée :", sha);
 
         const updatedContent = btoa(JSON.stringify(data, null, 2));
-        console.log("Base64 Content Encoded:", updatedContent);
+        console.log("Step 3: Base64 Content Encoded:", updatedContent);
 
-        console.log("Sending update request...");
+        console.log("Step 4: Sending update request...");
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${secrets.token}`,
+            Authorization: `Bearer ${secrets.TOKEN}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -288,11 +288,11 @@
         });
 
         if (updateResponse.ok) {
-          console.log("Update successful!");
+          console.log("Step 5: Update successful!");
           alert("Les données ont été sauvegardées avec succès !");
         } else {
           const errorText = await updateResponse.text();
-          console.error("Erreur lors de la mise à jour :", errorText);
+          console.error("Step 5: Failed to update file:", errorText);
           alert(`Échec de la sauvegarde des données : ${errorText}`);
         }
       } catch (error) {
@@ -300,6 +300,7 @@
         alert("Une erreur est survenue lors de la sauvegarde des données.");
       }
     }
+
 
 
     window.onload = () => {
