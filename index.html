@@ -137,14 +137,10 @@
     });
 
     map.on('draw:created', function (e) {
-      console.log("Draw event triggered:", e.layerType); // Debug log to ensure event fires
-      
       const type = e.layerType, layer = e.layer;
       if (type === 'polygon') {
         const latlngs = layer.getLatLngs()[0];
         const coords = latlngs.map(latlng => [latlng.lat, latlng.lng]);
-        console.log("Polygon coordinates:", coords); // Debug log for coordinates
-
         const superficie = calculerSuperficie(coords);
         const nom = prompt("Nom du territoire :");
         const dirigeant = prompt("Nom du dirigeant :");
@@ -153,18 +149,50 @@
         if (nom && dirigeant && description) {
           const territoire = { nom, dirigeant, description, coords, superficie };
           territoires.push(territoire);
-          console.log("Territory saved:", territoire); // Debug log for saved data
-          
-          layer.bindPopup(
+
+          // Use interactive: false to allow clicks through polygons
+          const polygon = L.polygon(coords, {
+            fillColor: '#FF0000',
+            color: '#FF0000',
+            fillOpacity: 0.4,
+            interactive: false // Critical change for click-through
+          }).addTo(map);
+
+          polygon.bindPopup(
             `<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br>Superficie: ${superficie.toFixed(2)}`
           );
+          drawnItems.addLayer(polygon);
         }
-        drawnItems.addLayer(layer); // Add polygon to map
+
         map.dragging.enable(); // Re-enable dragging
-        map.removeControl(drawControl); // Remove draw control
-        mode = null;
+        map.removeControl(drawControl); // Remove drawing controls
+        mode = null; // Reset mode
       }
     });
+
+  function mettreAJourClassement() {
+    const classement = document.getElementById('classement');
+    classement.innerHTML = ''; // Clear previous content
+
+    // Sort territories by descending area
+    territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
+      const li = document.createElement('li');
+      li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant} - Superficie: ${t.superficie.toFixed(2)}`;
+      classement.appendChild(li);
+    });
+
+    console.log("Classement mis à jour:", territoires); // Debug log
+  }
+  function afficherClassement() {
+    const classement = document.getElementById('classement');
+    if (classement.style.display === 'none' || classement.style.display === '') {
+      classement.style.display = 'block'; // Show ranking
+      mettreAJourClassement(); // Update ranking
+    } else {
+      classement.style.display = 'none'; // Hide ranking
+    }
+  }
+
 
 
     function calculerSuperficie(coords) {
