@@ -1,153 +1,245 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carte Interactive - Terre du Milieu</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <style>
-        #map { height: 100vh; }
-        .menu {
-            position: absolute;
-            top: 50%;
-            right: -220px;
-            width: 220px;
-            background: white;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
-            font-size: 16px;
-            z-index: 1000;
-            transition: right 0.3s;
-        }
-        .menu.active {
-            right: 0;
-        }
-        .menu-toggle {
-            position: absolute;
-            top: 50%;
-            right: 0;
-            background: white;
-            padding: 5px;
-            border-radius: 5px 0 0 5px;
-            cursor: pointer;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.3);
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carte Interactive - Terre du Milieu</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Leaflet.draw CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <style>
+    #map {
+      height: 100vh;
+    }
+    .menu {
+      position: absolute;
+      top: 50%;
+      right: -220px;
+      width: 220px;
+      background: white;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      font-size: 16px;
+      z-index: 1000;
+      transition: right 0.3s;
+    }
+    .menu.active {
+      right: 0;
+    }
+    .menu-toggle {
+      position: absolute;
+      top: 50%;
+      right: 0;
+      background: white;
+      padding: 5px;
+      border-radius: 5px 0 0 5px;
+      cursor: pointer;
+      box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+      z-index: 1001;
+    }
+  </style>
 </head>
 <body>
-    <div id="map"></div>
-    <div class="menu-toggle" onclick="toggleMenu()">▶</div>
-    <div class="menu" id="menu">
-        <button onclick="activerMode('Evenement')">Creer un evenement</button>
-        <button onclick="activerMode('territoire')">Dessiner un territoire</button>
-        <button onclick="afficherClassement()">Afficher Classement</button>
-        <h3>Classement des territoires</h3>
-        <ul id="classement" style="display: none;"></ul>
-    </div>
+  <div id="map"></div>
+  <div class="menu-toggle" onclick="toggleMenu()">▶</div>
+  <div class="menu" id="menu">
+    <button onclick="activerMode('point')">Ajouter un point</button>
+    <button onclick="activerMode('territoire')">Dessiner un territoire</button>
+    <button onclick="afficherClassement()">Afficher Classement</button>
+    <h3>Classement des territoires</h3>
+    <ul id="classement" style="display: none;"></ul>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet.draw JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script>
+    // Initialisation de la carte
+    var map = L.map('map', {
+      minZoom: 2,
+      maxZoom: 5,
+      center: [0, 0],
+      zoom: 2,
+      crs: L.CRS.Simple
+    });
     
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        var map = L.map('map', {
-            minZoom: 2,
-            maxZoom: 5,
-            center: [0, 0],
-            zoom: 2,
-            crs: L.CRS.Simple
+    var imageUrl = 'https://i.imgur.com/d0lSTs8.jpeg';
+    var imageBounds = [[-100, -137], [100, 137]];
+    L.imageOverlay(imageUrl, imageBounds).addTo(map);
+    map.fitBounds(imageBounds);
+
+    let mode = null;
+    function toggleMenu() {
+      let menu = document.getElementById('menu');
+      menu.classList.toggle('active');
+    }
+    function activerMode(nouveauMode) {
+      mode = nouveauMode;
+      if (mode === 'territoire') {
+        // Désactiver le dragging pendant le dessin
+        map.dragging.disable();
+        // Ajouter le contrôleur de dessin pour les polygones
+        map.addControl(drawControl);
+      } else if (mode === 'point') {
+        map.dragging.enable();
+      }
+    }
+
+    // Gestion des points
+    let points = [];
+    function ajouterPoint(lat, lon) {
+      let nom = prompt("Nom du point :") + " ⚔️";
+      let description = prompt("Description du point :");
+      if (nom && description) {
+        let marker = L.marker([lat, lon]).addTo(map);
+        marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
+        points.push({ lat, lon, nom, description });
+        sauvegarderDonnees();
+      }
+    }
+    function supprimerPoint(lat, lon) {
+      map.eachLayer(layer => {
+        if (layer instanceof L.Marker) {
+          let pos = layer.getLatLng();
+          if (pos.lat === lat && pos.lng === lon) {
+            map.removeLayer(layer);
+          }
+        }
+      });
+      points = points.filter(p => !(p.lat === lat && p.lon === lon));
+      sauvegarderDonnees();
+    }
+    map.on('click', function (e) {
+      if (mode === 'point') {
+        ajouterPoint(e.latlng.lat, e.latlng.lng);
+      }
+    });
+
+    // Gestion des territoires
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // Création du contrôleur de dessin pour les polygones
+    var drawControl = new L.Control.Draw({
+      edit: {
+        featureGroup: drawnItems,
+        edit: false,
+        remove: false
+      },
+      draw: {
+        polygon: true,
+        polyline: false,
+        rectangle: false,
+        circle: false,
+        marker: false,
+        circlemarker: false
+      }
+    });
+
+    let territoires = [];
+    // Fonction pour calculer l'aire d'un polygone (formule du shoelace)
+    function calculerSuperficie(coords) {
+      let area = 0;
+      let n = coords.length;
+      for (let i = 0; i < n; i++) {
+        let j = (i + 1) % n;
+        area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
+      }
+      return Math.abs(area / 2);
+    }
+
+    // Événement déclenché lors de la création d'un nouveau polygone
+    map.on('draw:created', function (e) {
+      let type = e.layerType,
+          layer = e.layer;
+      if (type === 'polygon') {
+        let latlngs = layer.getLatLngs()[0];
+        let coords = latlngs.map(function(latlng) {
+          return [latlng.lat, latlng.lng];
         });
-        
-        var imageUrl = 'https://i.imgur.com/d0lSTs8.jpeg';
-        var imageBounds = [[-100, -137], [100, 137]];
-        L.imageOverlay(imageUrl, imageBounds).addTo(map);
-        map.fitBounds(imageBounds);
+        // Calculer la superficie du polygone
+        let superficie = calculerSuperficie(coords);
+        // Demander les informations du territoire
+        let nom = prompt("Nom du territoire :");
+        let dirigeant = prompt("Nom du dirigeant :");
+        let description = prompt("Description du territoire :");
+        if (nom && dirigeant && description) {
+          let territoire = { nom, dirigeant, description, coords, superficie };
+          territoires.push(territoire);
+          sauvegarderDonnees();
+          layer.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br>Superficie: ${superficie.toFixed(2)}`);
+        }
+        drawnItems.addLayer(layer);
+        // Réactiver le dragging et réinitialiser le mode dessin
+        map.dragging.enable();
+        mode = null;
+        // Retirer le contrôleur de dessin
+        map.removeControl(drawControl);
+        // Actualiser le classement
+        mettreAJourClassement();
+      }
+    });
 
-        let mode = null;
-        function toggleMenu() {
-            let menu = document.getElementById('menu');
-            menu.classList.toggle('active');
-        }
-        function activerMode(nouveauMode) {
-            mode = nouveauMode;
-            if (mode === 'territoire') {
-                map.dragging.disable();
-                dessinerTerritoire();
-            } else {
-                map.dragging.enable();
-            }
-        }
+    // Sauvegarde des données sur le serveur
+    function sauvegarderDonnees() {
+      let data = { points, territoires };
+      fetch('/lotr', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.text())
+      .then(msg => console.log(msg))
+      .catch(error => console.error("Erreur :", error));
+    }
 
-        let points = [];
-        function ajouterPoint(lat, lon) {
-            let nom = prompt("Nom du point :") + " ⚔️";
-            let description = prompt("Description du point :");
-            if (nom && description) {
-                let marker = L.marker([lat, lon]).addTo(map);
-                marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
-                points.push({ lat, lon, nom, description });
-                sauvegarderDonnees();
-            }
-        }
-        function supprimerPoint(lat, lon) {
-            map.eachLayer(layer => {
-                if (layer instanceof L.Marker) {
-                    let pos = layer.getLatLng();
-                    if (pos.lat === lat && pos.lng === lon) {
-                        map.removeLayer(layer);
-                    }
-                }
-            });
-            points = points.filter(p => !(p.lat === lat && p.lon === lon));
-            sauvegarderDonnees();
-        }
-        map.on('click', function (e) {
-            if (mode === 'point') {
-                ajouterPoint(e.latlng.lat, e.latlng.lng);
-            }
+    // Chargement des données depuis le serveur
+    function chargerDonnees() {
+      fetch('/lotr')
+      .then(response => response.json())
+      .then(data => {
+        points = data.points || [];
+        territoires = data.territoires || [];
+        // Afficher les markers des points
+        points.forEach(p => {
+          let marker = L.marker([p.lat, p.lon]).addTo(map);
+          marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
         });
+        // Afficher les territoires
+        territoires.forEach(t => {
+          let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
+          polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}<br>Superficie: ${t.superficie.toFixed(2)}`);
+          drawnItems.addLayer(polygon);
+        });
+        mettreAJourClassement();
+      })
+      .catch(error => console.error("Erreur lors du chargement des données :", error));
+    }
 
-        var drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-        var territoires = [];
+    // Met à jour le classement des territoires (tri décroissant par superficie)
+    function mettreAJourClassement() {
+      let classement = document.getElementById('classement');
+      classement.innerHTML = '';
+      territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
+        let li = document.createElement('li');
+        li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant} - Superficie: ${t.superficie.toFixed(2)}`;
+        classement.appendChild(li);
+      });
+    }
 
-        function sauvegarderDonnees() {
-            let data = { points, territoires };
-            fetch('lotr.json', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-        }
+    // Affiche ou masque le classement
+    function afficherClassement() {
+      let classement = document.getElementById('classement');
+      if (classement.style.display === 'none' || classement.style.display === '') {
+        classement.style.display = 'block';
+        mettreAJourClassement();
+      } else {
+        classement.style.display = 'none';
+      }
+    }
 
-        function chargerDonnees() {
-            fetch('lotr.json')
-                .then(response => response.json())
-                .then(data => {
-                    points = data.points || [];
-                    territoires = data.territoires || [];
-                    points.forEach(p => {
-                        let marker = L.marker([p.lat, p.lon]).addTo(map);
-                        marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
-                    });
-                    territoires.forEach(t => {
-                        let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-                        polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}`);
-                    });
-                    mettreAJourClassement();
-                })
-                .catch(error => console.error("Erreur lors du chargement des données :", error));
-        }
-        
-        function mettreAJourClassement() {
-            let classement = document.getElementById('classement');
-            classement.innerHTML = '';
-            territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
-                let li = document.createElement('li');
-                li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant}`;
-                classement.appendChild(li);
-            });
-        }
-        
-        window.onload = chargerDonnees;
-    </script>
+    window.onload = chargerDonnees;
+  </script>
 </body>
 </html>
