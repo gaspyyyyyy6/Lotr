@@ -210,41 +210,57 @@
       const data = { points, territoires }; // Data to save
 
       try {
+        console.log("Starting SHA retrieval..."); // Debug log for starting
+
         // Fetch the current SHA of the file
         const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${secrets.ENREGISTREMENTS}` }
+          headers: {
+            Authorization: `Bearer ${secrets.ENREGISTREMENTS}`, // Ensure token reference is correct
+          },
         });
 
         if (!response.ok) {
-          console.error("Erreur lors de la récupération de la SHA :", await response.text());
+          const errorText = await response.text();
+          console.error("Failed to retrieve SHA:", errorText); // Log error
+          alert("Erreur lors de la récupération des données du fichier. Vérifiez le token ou l'URL.");
           return;
         }
 
         const fileData = await response.json();
-        const sha = fileData.sha; // Retrieved SHA
-        console.log("SHA récupérée :", sha);
+        const sha = fileData.sha; // Get the current file SHA
+        console.log("SHA récupérée :", sha); // Debug log for SHA
 
-        // Prepare the updated file content
+        // Prepare updated file content in Base64
+        const updatedContent = btoa(JSON.stringify(data, null, 2));
+        console.log("Base64 encoded content:", updatedContent); // Debug log for encoded content
+
+        console.log("Starting file update..."); // Debug log for starting update
+
+        // Send the PUT request to update the file
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${secrets.ENREGISTREMENTS}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             message: 'Mise à jour des points et territoires',
-            content: btoa(JSON.stringify(data, null, 2)), // Base64 encoding
-            sha: sha
-          })
+            content: updatedContent, // Encoded file content
+            sha: sha, // SHA of current file
+          }),
         });
 
         if (updateResponse.ok) {
+          console.log("Update successful!"); // Debug log for success
           alert("Les données ont été sauvegardées avec succès !");
         } else {
-          console.error("Erreur lors de la mise à jour :", await updateResponse.text());
+          const errorText = await updateResponse.text();
+          console.error("Failed to update file:", errorText); // Log error
+          alert(`Échec de la sauvegarde des données : ${errorText}`);
         }
       } catch (error) {
-        console.error("Erreur lors de la sauvegarde :", error);
+        console.error("Unexpected error occurred:", error); // Log unexpected error
+        alert("Une erreur est survenue lors de la sauvegarde des données.");
       }
     }
 
