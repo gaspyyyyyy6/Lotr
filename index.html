@@ -43,7 +43,7 @@
   <div id="map"></div>
   <div class="menu-toggle" onclick="toggleMenu()">▶</div>
   <div class="menu" id="menu">
-    <button onclick="mettreAJourFichierGitHub()">Save</button>
+    <button onclick="mettreAJourFichierGitHub()">Sauvegarder les données</button>
     <button onclick="activerMode('point')">Ajouter un point</button>
     <button onclick="activerMode('territoire')">Dessiner un territoire</button>
     <button onclick="afficherClassement()">Afficher Classement</button>
@@ -69,10 +69,16 @@
     map.fitBounds(imageBounds);
 
     let mode = null;
+    const points = [];
+    const territoires = [];
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
     function toggleMenu() {
       const menu = document.getElementById('menu');
       menu.classList.toggle('active');
     }
+
     function activerMode(nouveauMode) {
       mode = nouveauMode;
       if (mode === 'territoire') {
@@ -83,8 +89,6 @@
       }
     }
 
-    // Gestion des points
-    const points = [];
     function ajouterPoint(lat, lon) {
       const nom = prompt("Nom du point :") + " ⚔️";
       const description = prompt("Description du point :");
@@ -94,6 +98,7 @@
         points.push({ lat, lon, nom, description });
       }
     }
+
     function supprimerPoint(lat, lon) {
       map.eachLayer(layer => {
         if (layer instanceof L.Marker) {
@@ -105,15 +110,12 @@
       });
       points.splice(points.findIndex(p => p.lat === lat && p.lon === lon), 1);
     }
+
     map.on('click', function (e) {
       if (mode === 'point') {
         ajouterPoint(e.latlng.lat, e.latlng.lng);
       }
     });
-
-    // Gestion des territoires
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
 
     const drawControl = new L.Control.Draw({
       edit: {
@@ -130,17 +132,6 @@
         circlemarker: false
       }
     });
-
-    const territoires = [];
-    function calculerSuperficie(coords) {
-      let area = 0;
-      const n = coords.length;
-      for (let i = 0; i < n; i++) {
-        const j = (i + 1) % n;
-        area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
-      }
-      return Math.abs(area / 2);
-    }
 
     map.on('draw:created', function (e) {
       const type = e.layerType, layer = e.layer;
@@ -163,38 +154,55 @@
       }
     });
 
-    function sauvegarderDonnees() {
+    function calculerSuperficie(coords) {
+      let area = 0;
+      const n = coords.length;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
+      }
+      return Math.abs(area / 2);
+    }
+
+    async function mettreAJourFichierGitHub() {
+      const url = 'https://api.github.com/repos/USERNAME/REPOSITORY/contents/lotr.json';
       const data = { points, territoires };
-      fetch('/lotr', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-      .then(res => res.text())
-      .then(msg => console.log(msg))
-      .catch(error => console.error("Erreur :", error));
+
+      try {
+        // Fetch current SHA of the file
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${secrets.ENREGISTREMENTS}` }
+        });
+        const fileData = await response.json();
+        const sha = fileData.sha;
+
+        // Update the file with new data
+        const updateResponse = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${secrets.ENREGISTREMENTS}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: 'Mise à jour des points et territoires',
+            content: btoa(JSON.stringify(data, null, 2)),
+            sha: sha
+          })
+        });
+
+        if (updateResponse.ok) {
+          alert("Les données ont été sauvegardées avec succès !");
+        } else {
+          console.error("Erreur lors de la mise à jour :", await updateResponse.text());
+        }
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde :", error);
+      }
     }
 
-    function chargerDonnees() {
-      fetch('https://gaspyyyyyy6.github.io/Lotr/lotr.json')
-        .then(response => response.json())
-        .then(data => {
-          points.push(...data.points || []);
-          territoires.push(...data.territoires || []);
-          points.forEach(p => {
-            const marker = L.marker([p.lat, p.lon]).addTo(map);
-            marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
-          });
-          territoires.forEach(t => {
-            const polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-            polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}<br>Superficie: ${t.superficie.toFixed(2)}`);
-            drawnItems.addLayer(polygon);
-          });
-        })
-        .catch(error => console.error("Erreur lors du chargement des données :", error));
-    }
-
-    window.onload = chargerDonnees;
+    window.onload = () => {
+      console.log("Carte chargée !");
+    };
   </script>
 </body>
 </html>
