@@ -258,7 +258,7 @@
     fetch('https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json', {
       method: 'PUT',
       headers: {
-        'Authorization': 'Bearer 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', // Remplacez par votre token
+        'Authorization': ${{ secrets.TOKEN }}, // Remplacez par votre token
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
