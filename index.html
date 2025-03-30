@@ -134,25 +134,35 @@
     });
 
     map.on('draw:created', function (e) {
+      console.log("Draw event triggered:", e.layerType); // Debug log to ensure event fires
+      
       const type = e.layerType, layer = e.layer;
       if (type === 'polygon') {
         const latlngs = layer.getLatLngs()[0];
         const coords = latlngs.map(latlng => [latlng.lat, latlng.lng]);
+        console.log("Polygon coordinates:", coords); // Debug log for coordinates
+
         const superficie = calculerSuperficie(coords);
         const nom = prompt("Nom du territoire :");
         const dirigeant = prompt("Nom du dirigeant :");
         const description = prompt("Description du territoire :");
+
         if (nom && dirigeant && description) {
           const territoire = { nom, dirigeant, description, coords, superficie };
           territoires.push(territoire);
-          layer.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br>Superficie: ${superficie.toFixed(2)}`);
+          console.log("Territory saved:", territoire); // Debug log for saved data
+          
+          layer.bindPopup(
+            `<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br>Superficie: ${superficie.toFixed(2)}`
+          );
         }
-        drawnItems.addLayer(layer);
-        map.dragging.enable();
+        drawnItems.addLayer(layer); // Add polygon to map
+        map.dragging.enable(); // Re-enable dragging
+        map.removeControl(drawControl); // Remove draw control
         mode = null;
-        map.removeControl(drawControl);
       }
     });
+
 
     function calculerSuperficie(coords) {
       let area = 0;
