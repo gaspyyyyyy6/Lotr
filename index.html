@@ -7,21 +7,41 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         #map { height: 100vh; }
-        .control-panel {
+        .menu {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 50%;
+            right: -200px;
+            width: 200px;
             background: white;
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
             font-size: 14px;
             z-index: 1000;
+            transition: right 0.3s;
+        }
+        .menu.active {
+            right: 0;
+        }
+        .menu-toggle {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            background: white;
+            padding: 5px;
+            border-radius: 5px 0 0 5px;
+            cursor: pointer;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div class="menu-toggle" onclick="toggleMenu()">▶</div>
+    <div class="menu" id="menu">
+        <button onclick="activerMode('point')">Ajouter un point</button>
+        <button onclick="activerMode('territoire')">Dessiner un territoire</button>
+    </div>
     
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
@@ -37,6 +57,17 @@
         var imageBounds = [[-100, -137], [100, 137]];
         L.imageOverlay(imageUrl, imageBounds).addTo(map);
         map.fitBounds(imageBounds);
+
+        let mode = null;
+
+        function toggleMenu() {
+            let menu = document.getElementById('menu');
+            menu.classList.toggle('active');
+        }
+
+        function activerMode(nouveauMode) {
+            mode = nouveauMode;
+        }
 
         function ajouterPoint(lat, lon, nom, couleur, emoji) {
             let icon = L.divIcon({
@@ -79,11 +110,13 @@
         }
 
         map.on('click', function (e) {
-            let nom = prompt("Nom du point :");
-            let couleur = prompt("Couleur du point (red, blue, green, yellow, white) :", "red");
-            let emoji = prompt("Emoji du point :", "⚔️");
-            if (nom) {
-                ajouterPoint(e.latlng.lat, e.latlng.lng, nom, couleur, emoji);
+            if (mode === 'point') {
+                let nom = prompt("Nom du point :");
+                let couleur = prompt("Couleur du point (red, blue, green, yellow, white) :", "red");
+                let emoji = prompt("Emoji du point :", "⚔️");
+                if (nom) {
+                    ajouterPoint(e.latlng.lat, e.latlng.lng, nom, couleur, emoji);
+                }
             }
         });
 
@@ -103,18 +136,18 @@
                 marker: false
             }
         });
-        map.addControl(drawControl);
-
         map.on(L.Draw.Event.CREATED, function (event) {
-            var layer = event.layer;
-            let couleur = prompt("Couleur de la zone (ex: #FF0000) :", "#FF0000");
-            let nom = prompt("Nom de la zone :");
-            
-            if (nom && couleur) {
-                layer.setStyle({ fillColor: couleur, color: couleur, fillOpacity: 0.4 });
-                layer.bindPopup(`<b>${nom}</b>`).openPopup();
-                drawnItems.addLayer(layer);
-                sauvegarderZones();
+            if (mode === 'territoire') {
+                var layer = event.layer;
+                let couleur = prompt("Couleur de la zone (ex: #FF0000) :", "#FF0000");
+                let nom = prompt("Nom de la zone :");
+                
+                if (nom && couleur) {
+                    layer.setStyle({ fillColor: couleur, color: couleur, fillOpacity: 0.4 });
+                    layer.bindPopup(`<b>${nom}</b>`).openPopup();
+                    drawnItems.addLayer(layer);
+                    sauvegarderZones();
+                }
             }
         });
 
