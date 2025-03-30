@@ -96,8 +96,25 @@
       if (territoires.length === 0) {
         alert("Aucun territoire n'a été ajouté pour le moment.");
       } else {
-        const noms = territoires.map(t => t.nom).join('\n');
-        alert("Liste des territoires :\n" + noms);
+        // Loop through all territories
+        territoires.forEach(t => {
+          const polygon = drawnItems.getLayers().find(layer => {
+            return JSON.stringify(layer.getLatLngs()[0]) === JSON.stringify(t.coords);
+          });
+
+          if (polygon) {
+            // Add a label with the territory name
+            const center = polygon.getBounds().getCenter(); // Get the center of the polygon
+            const label = L.marker(center, {
+              icon: L.divIcon({
+                className: 'territory-label',
+                html: `<b>${t.nom}</b>`,
+                iconSize: [100, 30]
+              })
+            });
+            label.addTo(map); // Display the label on the map
+          }
+        });
       }
     }
 
@@ -217,59 +234,56 @@
 
     async function mettreAJourFichierGitHub() {
       const url = 'https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json';
-      const data = { points, territoires }; // Data to save
+      const data = { points, territoires };
 
       try {
-        console.log("Starting SHA retrieval..."); // Debug log for starting
+        console.log("Fetching SHA...");
 
-        // Fetch the current SHA of the file
         const response = await fetch(url, {
           headers: {
-            Authorization: `Bearer ${secrets.ENREGISTREMENTS}`, // Ensure token reference is correct
-          },
+            Authorization: `Bearer ${secrets.ENREGISTREMENTS}`
+          }
         });
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("Failed to retrieve SHA:", errorText); // Log error
+          console.error("Failed to retrieve SHA:", errorText);
           alert("Erreur lors de la récupération des données du fichier. Vérifiez le token ou l'URL.");
           return;
         }
 
         const fileData = await response.json();
-        const sha = fileData.sha; // Get the current file SHA
-        console.log("SHA récupérée :", sha); // Debug log for SHA
+        const sha = fileData.sha; // Retrieved SHA
+        console.log("SHA récupérée :", sha);
 
-        // Prepare updated file content in Base64
-        const updatedContent = btoa(JSON.stringify(data, null, 2));
-        console.log("Base64 encoded content:", updatedContent); // Debug log for encoded content
+        const updatedContent = btoa(JSON.stringify(data, null, 2)); // Base64-encoded content
+        console.log("Base64 Content:", updatedContent);
 
-        console.log("Starting file update..."); // Debug log for starting update
+        console.log("Sending update request...");
 
-        // Send the PUT request to update the file
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${secrets.token}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${secrets.ENREGISTREMENTS}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             message: 'Mise à jour des points et territoires',
-            content: updatedContent, // Encoded file content
-            sha: sha, // SHA of current file
-          }),
+            content: updatedContent,
+            sha: sha
+          })
         });
 
         if (updateResponse.ok) {
-          console.log("Update successful!"); // Debug log for success
+          console.log("Update successful!");
           alert("Les données ont été sauvegardées avec succès !");
         } else {
           const errorText = await updateResponse.text();
-          console.error("Failed to update file:", errorText); // Log error
+          console.error("Failed to update file:", errorText);
           alert(`Échec de la sauvegarde des données : ${errorText}`);
         }
       } catch (error) {
-        console.error("Unexpected error occurred:", error); // Log unexpected error
+        console.error("Unexpected error occurred:", error);
         alert("Une erreur est survenue lors de la sauvegarde des données.");
       }
     }
