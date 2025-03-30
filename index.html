@@ -33,17 +33,6 @@
             cursor: pointer;
             box-shadow: -2px 0 5px rgba(0,0,0,0.3);
         }
-        .color-picker, .emoji-picker {
-            display: flex;
-            gap: 5px;
-        }
-        .color-picker button, .emoji-picker button {
-            width: 30px;
-            height: 30px;
-            border: none;
-            cursor: pointer;
-            font-size: 20px;
-        }
     </style>
 </head>
 <body>
@@ -52,10 +41,6 @@
     <div class="menu" id="menu">
         <button onclick="activerMode('point')">Ajouter un point</button>
         <button onclick="activerMode('territoire')">Dessiner un territoire</button>
-        <div id="options-point" style="display: none;">
-            <div class="color-picker" id="colorPicker"></div>
-            <div class="emoji-picker" id="emojiPicker"></div>
-        </div>
     </div>
     
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -75,65 +60,35 @@
         map.fitBounds(imageBounds);
 
         let mode = null;
-        let selectedColor = 'red';
-        let selectedEmoji = '⚔️';
-
         function toggleMenu() {
             let menu = document.getElementById('menu');
             menu.classList.toggle('active');
         }
-
         function activerMode(nouveauMode) {
             mode = nouveauMode;
-            document.getElementById('options-point').style.display = (mode === 'point') ? 'block' : 'none';
         }
 
-        function ajouterPoint(lat, lon, nom) {
-            let icon = L.divIcon({
-                className: 'custom-marker',
-                html: `<div style="font-size: 20px; color: ${selectedColor};">${selectedEmoji}</div>`
-            });
-            
-            let marker = L.marker([lat, lon], { icon: icon, draggable: true }).addTo(map)
-              .bindPopup(`<b>${nom}</b>`);
-            
-            marker.on('dragend', sauvegarderPoints);
-            marker.on('click', function () {
-                map.removeLayer(marker);
-                sauvegarderPoints();
-            });
-            sauvegarderPoints();
+        function ajouterPoint(lat, lon) {
+            let nom = prompt("Nom du point :");
+            let description = prompt("Description du point :");
+            if (nom && description) {
+                let marker = L.marker([lat, lon]).addTo(map);
+                marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(this, ${lat}, ${lon})'>Supprimer</button>`);
+            }
         }
-
-        function sauvegarderPoints() {
-            let points = [];
-            map.eachLayer(function(layer) {
+        function supprimerPoint(button, lat, lon) {
+            map.eachLayer(layer => {
                 if (layer instanceof L.Marker) {
-                    points.push({
-                        lat: layer.getLatLng().lat,
-                        lon: layer.getLatLng().lng,
-                        nom: layer.getPopup().getContent().replace('<b>', '').replace('</b>', ''),
-                        couleur: selectedColor,
-                        emoji: selectedEmoji
-                    });
+                    let pos = layer.getLatLng();
+                    if (pos.lat === lat && pos.lng === lon) {
+                        map.removeLayer(layer);
+                    }
                 }
             });
-            localStorage.setItem('pointsCarte', JSON.stringify(points));
         }
-
-        function chargerPoints() {
-            let points = JSON.parse(localStorage.getItem('pointsCarte')) || [];
-            points.forEach(point => {
-                ajouterPoint(point.lat, point.lon, point.nom);
-            });
-        }
-
         map.on('click', function (e) {
             if (mode === 'point') {
-                let nom = prompt("Nom du point :");
-                if (nom) {
-                    ajouterPoint(e.latlng.lat, e.latlng.lng, nom);
-                }
+                ajouterPoint(e.latlng.lat, e.latlng.lng);
             }
         });
 
@@ -141,17 +96,8 @@
         map.addLayer(drawnItems);
 
         var drawControl = new L.Control.Draw({
-            edit: {
-                featureGroup: drawnItems,
-                remove: true
-            },
-            draw: {
-                polygon: true,
-                polyline: false,
-                rectangle: false,
-                circle: false,
-                marker: false
-            }
+            edit: { featureGroup: drawnItems, remove: true },
+            draw: { polygon: true, polyline: false, rectangle: false, circle: false, marker: false }
         });
         
         map.addControl(drawControl);
@@ -159,41 +105,18 @@
         map.on(L.Draw.Event.CREATED, function (event) {
             if (mode === 'territoire') {
                 var layer = event.layer;
-                let couleur = prompt("Couleur de la zone (ex: #FF0000) :", "#FF0000");
-                let nom = prompt("Nom de la zone :");
+                let nom = prompt("Nom du territoire :");
+                let dirigeant = prompt("Dirigeant :");
+                let description = prompt("Description :");
+                let couleur = prompt("Couleur (ex: #FF0000) :", "#FF0000");
                 
-                if (nom && couleur) {
+                if (nom && dirigeant && description && couleur) {
                     layer.setStyle({ fillColor: couleur, color: couleur, fillOpacity: 0.4 });
-                    layer.bindPopup(`<b>${nom}</b>`).openPopup();
+                    layer.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}`).openPopup();
                     drawnItems.addLayer(layer);
-                    sauvegarderZones();
                 }
             }
         });
-
-        function sauvegarderZones() {
-            let zones = [];
-            drawnItems.eachLayer(function(layer) {
-                zones.push({
-                    latlngs: layer.getLatLngs(),
-                    couleur: layer.options.fillColor,
-                    nom: layer.getPopup().getContent().replace('<b>', '').replace('</b>', '')
-                });
-            });
-            localStorage.setItem('zonesCarte', JSON.stringify(zones));
-        }
-
-        function chargerZones() {
-            let zones = JSON.parse(localStorage.getItem('zonesCarte')) || [];
-            zones.forEach(zone => {
-                let polygon = L.polygon(zone.latlngs, { fillColor: zone.couleur, color: zone.couleur, fillOpacity: 0.4 });
-                polygon.bindPopup(`<b>${zone.nom}</b>`);
-                drawnItems.addLayer(polygon);
-            });
-        }
-
-        chargerPoints();
-        chargerZones();
     </script>
 </body>
 </html>
