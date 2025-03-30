@@ -267,7 +267,7 @@
         }
 
         const fileData = await response.json();
-        const sha = fileData.sha; // File's current SHA
+        const sha = "f2efd6248d33c964eb709f2c865d778fba09595a"; // File's current SHA
         console.log("Step 2: SHA récupérée :", sha);
 
         const updatedContent = btoa(JSON.stringify(data, null, 2));
