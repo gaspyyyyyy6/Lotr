@@ -44,6 +44,7 @@
   <div id="map"></div>
   <div class="menu-toggle" onclick="toggleMenu()">▶</div>
   <div class="menu" id="menu">
+    <button onclick="sauvegarderDonnees()">Sauvegarder</button>
     <button onclick="activerMode('point')">Ajouter un point</button>
     <button onclick="activerMode('territoire')">Dessiner un territoire</button>
     <button onclick="afficherClassement()">Afficher Classement</button>
@@ -95,7 +96,6 @@
         let marker = L.marker([lat, lon]).addTo(map);
         marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
         points.push({ lat, lon, nom, description });
-        sauvegarderDonnees();
       }
     }
     function supprimerPoint(lat, lon) {
@@ -113,6 +113,7 @@
     map.on('click', function (e) {
       if (mode === 'point') {
         ajouterPoint(e.latlng.lat, e.latlng.lng);
+
       }
     });
 
@@ -167,7 +168,6 @@
         if (nom && dirigeant && description) {
           let territoire = { nom, dirigeant, description, coords, superficie };
           territoires.push(territoire);
-          sauvegarderDonnees();
           layer.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br>Superficie: ${superficie.toFixed(2)}`);
         }
         drawnItems.addLayer(layer);
@@ -196,37 +196,27 @@
 
     // Chargement des données depuis le serveur
     function chargerDonnees() {
-      fetch('/lotr')
-      .then(response => response.json())
-      .then(data => {
-        points = data.points || [];
-        territoires = data.territoires || [];
-        // Afficher les markers des points
-        points.forEach(p => {
-          let marker = L.marker([p.lat, p.lon]).addTo(map);
-          marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
-        });
-        // Afficher les territoires
-        territoires.forEach(t => {
-          let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-          polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}<br>Superficie: ${t.superficie.toFixed(2)}`);
-          drawnItems.addLayer(polygon);
-        });
-        mettreAJourClassement();
-      })
-      .catch(error => console.error("Erreur lors du chargement des données :", error));
+      fetch('https://gaspyyyyyy6.github.io/Lotr/lotr.json')
+        .then(response => response.json())
+        .then(data => {
+          points = data.points || [];
+          territoires = data.territoires || [];
+          // Afficher les markers des points
+          points.forEach(p => {
+            let marker = L.marker([p.lat, p.lon]).addTo(map);
+            marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
+          });
+          // Afficher les territoires
+          territoires.forEach(t => {
+            let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
+            polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}<br>Superficie: ${t.superficie.toFixed(2)}`);
+            drawnItems.addLayer(polygon);
+          });
+          mettreAJourClassement();
+        })
+        .catch(error => console.error("Erreur lors du chargement des données :", error));
     }
 
-    // Met à jour le classement des territoires (tri décroissant par superficie)
-    function mettreAJourClassement() {
-      let classement = document.getElementById('classement');
-      classement.innerHTML = '';
-      territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
-        let li = document.createElement('li');
-        li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant} - Superficie: ${t.superficie.toFixed(2)}`;
-        classement.appendChild(li);
-      });
-    }
 
     // Affiche ou masque le classement
     function afficherClassement() {
@@ -237,6 +227,11 @@
       } else {
         classement.style.display = 'none';
       }
+    }
+    function sauvegarderDonnees() {
+      let data = { points, territoires };
+      console.log(JSON.stringify(data)); // Afficher le JSON dans la console
+      alert("Les données ont été mises à jour. Copiez le JSON affiché dans la console et remplacez le fichier sur GitHub.");
     }
 
     window.onload = chargerDonnees;
