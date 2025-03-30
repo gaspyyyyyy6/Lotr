@@ -7,12 +7,16 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         #map { height: 100vh; }
-        .legend {
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             background: white;
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
             font-size: 14px;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -34,19 +38,20 @@
         L.imageOverlay(imageUrl, imageBounds).addTo(map);
         map.fitBounds(imageBounds);
 
-        function ajouterPoint(lat, lon, nom, desc, couleur, emoji) {
+        function ajouterPoint(lat, lon, nom, couleur, emoji) {
             let icon = L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="font-size: 20px; color: ${couleur};">${emoji}</div>`
             });
             
             let marker = L.marker([lat, lon], { icon: icon, draggable: true }).addTo(map)
-              .bindPopup(`<b>${nom}</b><br>${desc}`);
+              .bindPopup(`<b>${nom}</b>`);
             
-            marker.on('dragend', function (e) {
-                console.log(`Nouveau point de ${nom}:`, e.target.getLatLng());
+            marker.on('dragend', sauvegarderPoints);
+            marker.on('click', function () {
+                map.removeLayer(marker);
+                sauvegarderPoints();
             });
-
             sauvegarderPoints();
         }
 
@@ -57,8 +62,7 @@
                     points.push({
                         lat: layer.getLatLng().lat,
                         lon: layer.getLatLng().lng,
-                        nom: layer.getPopup().getContent().split('<br>')[0].replace('<b>', '').replace('</b>', ''),
-                        desc: layer.getPopup().getContent().split('<br>')[1],
+                        nom: layer.getPopup().getContent().replace('<b>', '').replace('</b>', ''),
                         couleur: layer.options.icon.options.html.match(/color: (.*?);/)[1],
                         emoji: layer.options.icon.options.html.match(/>(.*?)<\/div>/)[1]
                     });
@@ -70,51 +74,73 @@
         function chargerPoints() {
             let points = JSON.parse(localStorage.getItem('pointsCarte')) || [];
             points.forEach(point => {
-                ajouterPoint(point.lat, point.lon, point.nom, point.desc, point.couleur, point.emoji);
+                ajouterPoint(point.lat, point.lon, point.nom, point.couleur, point.emoji);
             });
         }
 
-        var controlDiv = document.createElement('div');
-        controlDiv.className = 'legend';
-        controlDiv.innerHTML = `
-            <h3>Ajouter un point</h3>
-            <label>Nom:</label> <input type="text" id="pointNom" /><br>
-            <label>Description:</label> <input type="text" id="pointDesc" /><br>
-            <label>Latitude:</label> <input type="number" id="pointLat" /><br>
-            <label>Longitude:</label> <input type="number" id="pointLon" /><br>
-            <label>Emoji:</label>
-            <select id="pointEmoji">
-                <option value="⚔️">⚔️ Épée</option>
-                <option value="💀">💀 Crâne</option>
-                <option value="🪦">🪦 Tombe</option>
-                <option value="🔥">🔥 Feu</option>
-                <option value="📜">📜 Parchemin</option>
-            </select><br>
-            <label>Couleur:</label>
-            <select id="pointCouleur">
-                <option value="red">Rouge</option>
-                <option value="blue">Bleu</option>
-                <option value="green">Vert</option>
-                <option value="yellow">Jaune</option>
-                <option value="white">Blanc</option>
-            </select><br>
-            <button onclick="ajouterPointDepuisForm()">Ajouter</button>
-        `;
-        document.body.appendChild(controlDiv);
-
-        function ajouterPointDepuisForm() {
-            let nom = document.getElementById('pointNom').value;
-            let desc = document.getElementById('pointDesc').value;
-            let lat = parseFloat(document.getElementById('pointLat').value);
-            let lon = parseFloat(document.getElementById('pointLon').value);
-            let emoji = document.getElementById('pointEmoji').value;
-            let couleur = document.getElementById('pointCouleur').value;
-            if (nom && desc && !isNaN(lat) && !isNaN(lon)) {
-                ajouterPoint(lat, lon, nom, desc, couleur, emoji);
+        map.on('click', function (e) {
+            let nom = prompt("Nom du point :");
+            let couleur = prompt("Couleur du point (red, blue, green, yellow, white) :", "red");
+            let emoji = prompt("Emoji du point :", "⚔️");
+            if (nom) {
+                ajouterPoint(e.latlng.lat, e.latlng.lng, nom, couleur, emoji);
             }
+        });
+
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        var drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            },
+            draw: {
+                polygon: true,
+                polyline: false,
+                rectangle: false,
+                circle: false,
+                marker: false
+            }
+        });
+        map.addControl(drawControl);
+
+        map.on(L.Draw.Event.CREATED, function (event) {
+            var layer = event.layer;
+            let couleur = prompt("Couleur de la zone (ex: #FF0000) :", "#FF0000");
+            let nom = prompt("Nom de la zone :");
+            
+            if (nom && couleur) {
+                layer.setStyle({ fillColor: couleur, color: couleur, fillOpacity: 0.4 });
+                layer.bindPopup(`<b>${nom}</b>`).openPopup();
+                drawnItems.addLayer(layer);
+                sauvegarderZones();
+            }
+        });
+
+        function sauvegarderZones() {
+            let zones = [];
+            drawnItems.eachLayer(function(layer) {
+                zones.push({
+                    latlngs: layer.getLatLngs(),
+                    couleur: layer.options.fillColor,
+                    nom: layer.getPopup().getContent().replace('<b>', '').replace('</b>', '')
+                });
+            });
+            localStorage.setItem('zonesCarte', JSON.stringify(zones));
+        }
+
+        function chargerZones() {
+            let zones = JSON.parse(localStorage.getItem('zonesCarte')) || [];
+            zones.forEach(zone => {
+                let polygon = L.polygon(zone.latlngs, { fillColor: zone.couleur, color: zone.couleur, fillOpacity: 0.4 });
+                polygon.bindPopup(`<b>${zone.nom}</b>`);
+                drawnItems.addLayer(polygon);
+            });
         }
 
         chargerPoints();
+        chargerZones();
     </script>
 </body>
 </html>
