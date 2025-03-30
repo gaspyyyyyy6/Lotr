@@ -10,13 +10,13 @@
         .menu {
             position: absolute;
             top: 50%;
-            right: -200px;
-            width: 200px;
+            right: -220px;
+            width: 220px;
             background: white;
-            padding: 10px;
+            padding: 15px;
             border-radius: 5px;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
-            font-size: 14px;
+            font-size: 16px;
             z-index: 1000;
             transition: right 0.3s;
         }
@@ -76,12 +76,14 @@
             }
         }
 
+        let points = [];
         function ajouterPoint(lat, lon) {
             let nom = prompt("Nom du point :");
             let description = prompt("Description du point :");
             if (nom && description) {
                 let marker = L.marker([lat, lon]).addTo(map);
                 marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
+                points.push({ lat, lon, nom, description });
                 sauvegarderDonnees();
             }
         }
@@ -94,6 +96,7 @@
                     }
                 }
             });
+            points = points.filter(p => !(p.lat === lat && p.lon === lon));
             sauvegarderDonnees();
         }
         map.on('click', function (e) {
@@ -136,7 +139,7 @@
                 
                 if (nom && dirigeant && description) {
                     let polygon = L.polygon(points, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-                    polygon.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br><button onclick='supprimerTerritoire()'>Supprimer</button>`).openPopup();
+                    polygon.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br><button onclick='supprimerTerritoire("${nom}")'>Supprimer</button>`).openPopup();
                     drawnItems.addLayer(polygon);
                     territoires.push({ nom, dirigeant, superficie: L.GeometryUtil.geodesicArea(points) });
                     map.removeLayer(tempLayer);
@@ -152,16 +155,25 @@
         function afficherClassement() {
             let classement = document.getElementById('classement');
             classement.style.display = classement.style.display === 'none' ? 'block' : 'none';
+            mettreAJourClassement();
+        }
+        function mettreAJourClassement() {
+            let classement = document.getElementById('classement');
+            classement.innerHTML = '';
+            territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
+                let li = document.createElement('li');
+                li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant}`;
+                classement.appendChild(li);
+            });
         }
         function sauvegarderDonnees() {
+            localStorage.setItem('points', JSON.stringify(points));
             localStorage.setItem('territoires', JSON.stringify(territoires));
         }
         function chargerDonnees() {
-            let data = localStorage.getItem('territoires');
-            if (data) {
-                territoires = JSON.parse(data);
-                mettreAJourClassement();
-            }
+            points = JSON.parse(localStorage.getItem('points')) || [];
+            territoires = JSON.parse(localStorage.getItem('territoires')) || [];
+            mettreAJourClassement();
         }
         window.onload = chargerDonnees;
     </script>
