@@ -44,7 +44,6 @@
     </div>
     
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
     <script>
         var map = L.map('map', {
             minZoom: 2,
@@ -66,17 +65,32 @@
         }
         function activerMode(nouveauMode) {
             mode = nouveauMode;
+            if (mode === 'territoire') {
+                map.dragging.disable();
+                dessinerTerritoire();
+            } else {
+                map.dragging.enable();
+            }
         }
 
         function ajouterPoint(lat, lon) {
             let nom = prompt("Nom du point :");
             let description = prompt("Description du point :");
+            let couleur = prompt("Couleur du point (ex: #FF0000) :", "#FF0000");
+            let emoji = prompt("Emoji du point :", "⚔️");
             if (nom && description) {
-                let marker = L.marker([lat, lon]).addTo(map);
-                marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(this, ${lat}, ${lon})'>Supprimer</button>`);
+                let marker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: `<span style="color: ${couleur}; font-size: 24px;">${emoji}</span>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                }).addTo(map);
+                marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
             }
         }
-        function supprimerPoint(button, lat, lon) {
+        function supprimerPoint(lat, lon) {
             map.eachLayer(layer => {
                 if (layer instanceof L.Marker) {
                     let pos = layer.getLatLng();
@@ -95,28 +109,47 @@
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
 
-        var drawControl = new L.Control.Draw({
-            edit: { featureGroup: drawnItems, remove: true },
-            draw: { polygon: true, polyline: false, rectangle: false, circle: false, marker: false }
-        });
-        
-        map.addControl(drawControl);
-        
-        map.on(L.Draw.Event.CREATED, function (event) {
-            if (mode === 'territoire') {
-                var layer = event.layer;
+        function dessinerTerritoire() {
+            let isDrawing = true;
+            let tempLayer = L.polyline([], { color: 'blue', weight: 2 }).addTo(map);
+            let points = [];
+            
+            function onMouseMove(e) {
+                if (!isDrawing) return;
+                let latlngs = [...points, [e.latlng.lat, e.latlng.lng]];
+                tempLayer.setLatLngs(latlngs);
+            }
+            
+            function onClick(e) {
+                if (!isDrawing) return;
+                points.push([e.latlng.lat, e.latlng.lng]);
+                tempLayer.setLatLngs(points);
+            }
+            
+            function onDoubleClick() {
+                isDrawing = false;
+                map.off('mousemove', onMouseMove);
+                map.off('click', onClick);
+                map.off('dblclick', onDoubleClick);
+                map.dragging.enable();
+                
                 let nom = prompt("Nom du territoire :");
                 let dirigeant = prompt("Dirigeant :");
                 let description = prompt("Description :");
                 let couleur = prompt("Couleur (ex: #FF0000) :", "#FF0000");
                 
                 if (nom && dirigeant && description && couleur) {
-                    layer.setStyle({ fillColor: couleur, color: couleur, fillOpacity: 0.4 });
-                    layer.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}`).openPopup();
-                    drawnItems.addLayer(layer);
+                    let polygon = L.polygon(points, { fillColor: couleur, color: couleur, fillOpacity: 0.4 }).addTo(map);
+                    polygon.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}`).openPopup();
+                    drawnItems.addLayer(polygon);
+                    map.removeLayer(tempLayer);
                 }
             }
-        });
+            
+            map.on('mousemove', onMouseMove);
+            map.on('click', onClick);
+            map.on('dblclick', onDoubleClick);
+        }
     </script>
 </body>
 </html>
