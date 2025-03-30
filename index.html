@@ -283,15 +283,16 @@
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${process.env.GIT_TOKEN}`
-
+            Authorization: `Bearer ${process.env.GIT_TOKEN}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             message: 'Mise à jour des points et territoires',
             content: updatedContent,
-            sha: sha || undefined // Si le fichier n'existe pas, GitHub n'a pas besoin du SHA
           })
         });
+
+
 
         if (updateResponse.ok) {
           console.log("Step 5: Update successful!");
