@@ -95,27 +95,30 @@
     function afficherNomsTerritoires() {
       if (territoires.length === 0) {
         alert("Aucun territoire n'a été ajouté pour le moment.");
-      } else {
-        // Loop through all territories
-        territoires.forEach(t => {
-          const polygon = drawnItems.getLayers().find(layer => {
-            return JSON.stringify(layer.getLatLngs()[0]) === JSON.stringify(t.coords);
-          });
-
-          if (polygon) {
-            // Add a label with the territory name
-            const center = polygon.getBounds().getCenter(); // Get the center of the polygon
-            const label = L.marker(center, {
-              icon: L.divIcon({
-                className: 'territory-label',
-                html: `<b>${t.nom}</b>`,
-                iconSize: [100, 30]
-              })
-            });
-            label.addTo(map); // Display the label on the map
-          }
-        });
+        return;
       }
+
+      // Loop through all territories
+      territoires.forEach(territoire => {
+        // Find the matching polygon in the drawnItems layer
+        const matchingPolygon = drawnItems.getLayers().find(layer => {
+          const layerCoords = layer.getLatLngs()[0].map(coord => [coord.lat, coord.lng]);
+          const territoireCoords = territoire.coords.map(coord => [coord[0], coord[1]]);
+          return JSON.stringify(layerCoords) === JSON.stringify(territoireCoords);
+        });
+
+        if (matchingPolygon) {
+          // Add a label with the territory name
+          const center = matchingPolygon.getBounds().getCenter(); // Get the polygon's center
+          L.marker(center, {
+            icon: L.divIcon({
+              className: 'territory-label',
+              html: `<b>${territoire.nom}</b>`,
+              iconSize: [100, 30]
+            })
+          }).addTo(map);
+        }
+      });
     }
 
 
@@ -238,7 +241,6 @@
 
       try {
         console.log("Fetching SHA...");
-
         const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${secrets.ENREGISTREMENTS}`
@@ -247,20 +249,19 @@
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("Failed to retrieve SHA:", errorText);
+          console.error("Erreur lors de la récupération de la SHA :", errorText);
           alert("Erreur lors de la récupération des données du fichier. Vérifiez le token ou l'URL.");
           return;
         }
 
         const fileData = await response.json();
-        const sha = fileData.sha; // Retrieved SHA
+        const sha = fileData.sha;
         console.log("SHA récupérée :", sha);
 
-        const updatedContent = btoa(JSON.stringify(data, null, 2)); // Base64-encoded content
-        console.log("Base64 Content:", updatedContent);
+        const updatedContent = btoa(JSON.stringify(data, null, 2));
+        console.log("Base64 Content Encoded:", updatedContent);
 
         console.log("Sending update request...");
-
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
@@ -279,11 +280,11 @@
           alert("Les données ont été sauvegardées avec succès !");
         } else {
           const errorText = await updateResponse.text();
-          console.error("Failed to update file:", errorText);
+          console.error("Erreur lors de la mise à jour :", errorText);
           alert(`Échec de la sauvegarde des données : ${errorText}`);
         }
       } catch (error) {
-        console.error("Unexpected error occurred:", error);
+        console.error("Unexpected error:", error);
         alert("Une erreur est survenue lors de la sauvegarde des données.");
       }
     }
