@@ -44,7 +44,7 @@
   <div id="map"></div>
   <div class="menu-toggle" onclick="toggleMenu()">▶</div>
   <div class="menu" id="menu">
-    <button onclick="sauvegarderDonnees()">Sauvegarder</button>
+    <button onclick="mettreAJourFichierGitHub()">Sauvegarder</button>
     <button onclick="activerMode('point')">Ajouter un point</button>
     <button onclick="activerMode('territoire')">Dessiner un territoire</button>
     <button onclick="afficherClassement()">Afficher Classement</button>
@@ -235,6 +235,46 @@
     }
 
     window.onload = chargerDonnees;
+    <script>
+  // Exemple de données à mettre à jour (remplacez par les données réelles de points et territoires)
+  let data = {
+    points: [
+      { lat: 0, lon: 0, nom: "Point 1", description: "Description du point 1" },
+      { lat: 10, lon: 10, nom: "Point 2", description: "Description du point 2" }
+    ],
+    territoires: [
+      { 
+        nom: "Territoire 1",
+        dirigeant: "Dirigeant 1",
+        description: "Description",
+        coords: [[0, 0], [10, 10], [10, 0]],
+        superficie: 100
+      }
+    ]
+  };
+
+  // Mettre à jour le fichier sur GitHub
+  function mettreAJourFichierGitHub() {
+    fetch('https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json', {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer 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', // Remplacez par votre token
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: 'Mise à jour automatique du fichier JSON',
+        content: btoa(JSON.stringify(data, null, 2)), // Encodage Base64
+        sha:    "f2efd6248d33c964eb709f2c865d778fba09595a" // Remplacez par le SHA actuel
+      })
+    }).then(response => response.json())
+      .then(data => console.log('Fichier mis à jour :', data))
+      .catch(error => console.error("Erreur lors de la mise à jour :", error));
+  }
+
+  // Appelez cette fonction lorsque nécessaire (par exemple, après un ajout ou une modification)
+  // mettreAJourFichierGitHub();
+</script>
+
   </script>
 </body>
 </html>
