@@ -1,5 +1,5 @@
-const fetch = require('node-fetch');
-const fs = require('fs');
+const fetch = require('node-fetch'); // Si nécessaire, installe 'node-fetch'
+const fs = require('fs'); // Si nécessaire pour gérer des fichiers locaux
 
 async function mettreAJourFichierGitHub() {
   const url = 'https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json';
@@ -24,8 +24,7 @@ async function mettreAJourFichierGitHub() {
     } else {
       const errorText = await response.text();
       console.error("Erreur lors de la récupération du fichier:", errorText);
-      alert("Erreur lors de la récupération des données du fichier.");
-      return;
+      return; // Si l'on ne peut pas récupérer le fichier, arrêter le processus.
     }
 
     console.log("Step 3: Encoding content to Base64...");
@@ -49,16 +48,14 @@ async function mettreAJourFichierGitHub() {
 
     if (updateResponse.ok) {
       console.log("Step 5: Update successful!");
-      alert("Les données ont été sauvegardées avec succès !");
     } else {
       const errorText = await updateResponse.text();
       console.error("Step 5: Failed to update file:", errorText);
-      alert(`Échec de la sauvegarde des données : ${errorText}`);
     }
   } catch (error) {
     console.error("Unexpected error:", error);
-    alert(`Une erreur inattendue : ${error.message}`);
   }
 }
 
+// Lancement de la mise à jour
 mettreAJourFichierGitHub();
