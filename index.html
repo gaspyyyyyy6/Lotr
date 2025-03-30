@@ -55,22 +55,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <script>
     // Initialisation de la carte
-    var map = L.map('map', {
+    const map = L.map('map', {
       minZoom: 2,
       maxZoom: 5,
       center: [0, 0],
       zoom: 2,
       crs: L.CRS.Simple
     });
-    
-    var imageUrl = 'https://i.imgur.com/d0lSTs8.jpeg';
-    var imageBounds = [[-100, -137], [100, 137]];
+
+    const imageUrl = 'https://i.imgur.com/d0lSTs8.jpeg';
+    const imageBounds = [[-100, -137], [100, 137]];
     L.imageOverlay(imageUrl, imageBounds).addTo(map);
     map.fitBounds(imageBounds);
 
     let mode = null;
     function toggleMenu() {
-      let menu = document.getElementById('menu');
+      const menu = document.getElementById('menu');
       menu.classList.toggle('active');
     }
     function activerMode(nouveauMode) {
@@ -84,12 +84,12 @@
     }
 
     // Gestion des points
-    let points = [];
+    const points = [];
     function ajouterPoint(lat, lon) {
-      let nom = prompt("Nom du point :") + " ⚔️";
-      let description = prompt("Description du point :");
+      const nom = prompt("Nom du point :") + " ⚔️";
+      const description = prompt("Description du point :");
       if (nom && description) {
-        let marker = L.marker([lat, lon]).addTo(map);
+        const marker = L.marker([lat, lon]).addTo(map);
         marker.bindPopup(`<b>${nom}</b><br>${description}<br><button onclick='supprimerPoint(${lat}, ${lon})'>Supprimer</button>`);
         points.push({ lat, lon, nom, description });
       }
@@ -97,14 +97,13 @@
     function supprimerPoint(lat, lon) {
       map.eachLayer(layer => {
         if (layer instanceof L.Marker) {
-          let pos = layer.getLatLng();
+          const pos = layer.getLatLng();
           if (pos.lat === lat && pos.lng === lon) {
             map.removeLayer(layer);
           }
         }
       });
-      points = points.filter(p => !(p.lat === lat && p.lon === lon));
-      sauvegarderDonnees();
+      points.splice(points.findIndex(p => p.lat === lat && p.lon === lon), 1);
     }
     map.on('click', function (e) {
       if (mode === 'point') {
@@ -113,10 +112,10 @@
     });
 
     // Gestion des territoires
-    var drawnItems = new L.FeatureGroup();
+    const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
-    var drawControl = new L.Control.Draw({
+    const drawControl = new L.Control.Draw({
       edit: {
         featureGroup: drawnItems,
         edit: false,
@@ -132,29 +131,28 @@
       }
     });
 
-    let territoires = [];
+    const territoires = [];
     function calculerSuperficie(coords) {
       let area = 0;
-      let n = coords.length;
+      const n = coords.length;
       for (let i = 0; i < n; i++) {
-        let j = (i + 1) % n;
+        const j = (i + 1) % n;
         area += coords[i][0] * coords[j][1] - coords[j][0] * coords[i][1];
       }
       return Math.abs(area / 2);
     }
 
     map.on('draw:created', function (e) {
-      let type = e.layerType,
-          layer = e.layer;
+      const type = e.layerType, layer = e.layer;
       if (type === 'polygon') {
-        let latlngs = layer.getLatLngs()[0];
-        let coords = latlngs.map(latlng => [latlng.lat, latlng.lng]);
-        let superficie = calculerSuperficie(coords);
-        let nom = prompt("Nom du territoire :");
-        let dirigeant = prompt("Nom du dirigeant :");
-        let description = prompt("Description du territoire :");
+        const latlngs = layer.getLatLngs()[0];
+        const coords = latlngs.map(latlng => [latlng.lat, latlng.lng]);
+        const superficie = calculerSuperficie(coords);
+        const nom = prompt("Nom du territoire :");
+        const dirigeant = prompt("Nom du dirigeant :");
+        const description = prompt("Description du territoire :");
         if (nom && dirigeant && description) {
-          let territoire = { nom, dirigeant, description, coords, superficie };
+          const territoire = { nom, dirigeant, description, coords, superficie };
           territoires.push(territoire);
           layer.bindPopup(`<b>${nom}</b><br><b>Dirigeant:</b> ${dirigeant}<br>${description}<br>Superficie: ${superficie.toFixed(2)}`);
         }
@@ -162,12 +160,11 @@
         map.dragging.enable();
         mode = null;
         map.removeControl(drawControl);
-        mettreAJourClassement();
       }
     });
 
     function sauvegarderDonnees() {
-      let data = { points, territoires };
+      const data = { points, territoires };
       fetch('/lotr', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -182,34 +179,22 @@
       fetch('https://gaspyyyyyy6.github.io/Lotr/lotr.json')
         .then(response => response.json())
         .then(data => {
-          points = data.points || [];
-          territoires = data.territoires || [];
+          points.push(...data.points || []);
+          territoires.push(...data.territoires || []);
           points.forEach(p => {
-            let marker = L.marker([p.lat, p.lon]).addTo(map);
+            const marker = L.marker([p.lat, p.lon]).addTo(map);
             marker.bindPopup(`<b>${p.nom}</b><br>${p.description}<br><button onclick='supprimerPoint(${p.lat}, ${p.lon})'>Supprimer</button>`);
           });
           territoires.forEach(t => {
-            let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
+            const polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
             polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}<br>Superficie: ${t.superficie.toFixed(2)}`);
             drawnItems.addLayer(polygon);
           });
-          mettreAJourClassement();
         })
         .catch(error => console.error("Erreur lors du chargement des données :", error));
     }
 
-    function mettreAJourFichierGitHub() {
-      fetch('https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json', {
-        headers: { 'Authorization': 'Bearer YOUR_GITHUB_TOKEN' }
-      })
-      .then(response => response.json())
-      .then(data => {
-        const sha = data.sha;
-        let updatedData = { points, territoires };
-        fetch('https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json', {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${secrets.ENREGISTREMENTS}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify
+    window.onload = chargerDonnees;
+  </script>
+</body>
+</html>
