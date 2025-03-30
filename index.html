@@ -19,7 +19,6 @@
             font-size: 16px;
             z-index: 1000;
             transition: right 0.3s;
-            transform: translateY(-50%);
         }
         .menu.active {
             right: 0;
@@ -27,19 +26,18 @@
         .menu-toggle {
             position: absolute;
             top: 50%;
-            right: 220px;
+            right: 0;
             background: white;
-            padding: 10px;
+            padding: 5px;
             border-radius: 5px 0 0 5px;
             cursor: pointer;
             box-shadow: -2px 0 5px rgba(0,0,0,0.3);
-            z-index: 1001;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <div class="menu-toggle" onclick="toggleMenu()">▶</div>
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
     <div class="menu" id="menu">
         <button onclick="activerMode('point')">Ajouter un point</button>
         <button onclick="activerMode('territoire')">Dessiner un territoire</button>
@@ -64,17 +62,26 @@
         map.fitBounds(imageBounds);
 
         let mode = null;
-        let points = JSON.parse(localStorage.getItem('points')) || [];
-        let territoires = JSON.parse(localStorage.getItem('territoires')) || [];
-        let drawnItems = new L.FeatureGroup().addTo(map);
-
         function toggleMenu() {
-            document.getElementById('menu').classList.toggle('active');
+            let menu = document.getElementById('menu');
+            menu.classList.toggle('active');
         }
-
         function activerMode(nouveauMode) {
             mode = nouveauMode;
         }
+
+        let points = JSON.parse(localStorage.getItem('points')) || [];
+        let territoires = JSON.parse(localStorage.getItem('territoires')) || [];
+
+        points.forEach(p => {
+            let marker = L.marker([p.lat, p.lon]).addTo(map);
+            marker.bindPopup(`<b>${p.nom}</b><br>${p.description}`);
+        });
+
+        territoires.forEach(t => {
+            let polygon = L.polygon(t.points, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
+            polygon.bindPopup(`<b>${t.nom}</b><br><b>Dirigeant:</b> ${t.dirigeant}<br>${t.description}`);
+        });
 
         function ajouterPoint(lat, lon) {
             let nom = prompt("Nom du point :");
@@ -86,71 +93,21 @@
                 sauvegarderDonnees();
             }
         }
-
-        function dessinerTerritoire() {
-            let polygonPoints = [];
-            let tempPolygon = L.polygon([], { color: 'blue' }).addTo(map);
-            
-            function onClick(e) {
-                polygonPoints.push([e.latlng.lat, e.latlng.lng]);
-                tempPolygon.setLatLngs(polygonPoints);
-            }
-            
-            function onDoubleClick() {
-                map.off('click', onClick);
-                map.off('dblclick', onDoubleClick);
-                let nom = prompt("Nom du territoire :");
-                let dirigeant = prompt("Dirigeant :");
-                if (nom && dirigeant) {
-                    let territoire = L.polygon(polygonPoints, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-                    territoire.bindPopup(`<b>${nom}</b><br>Dirigeant: ${dirigeant}`);
-                    territoires.push({ nom, dirigeant, coords: polygonPoints });
-                    sauvegarderDonnees();
-                }
-                map.removeLayer(tempPolygon);
-            }
-            
-            map.on('click', onClick);
-            map.on('dblclick', onDoubleClick);
+        
+        function sauvegarderDonnees() {
+            localStorage.setItem('points', JSON.stringify(points));
+            localStorage.setItem('territoires', JSON.stringify(territoires));
         }
-
-        map.on('click', function (e) {
-            if (mode === 'point') {
-                ajouterPoint(e.latlng.lat, e.latlng.lng);
-            } else if (mode === 'territoire') {
-                dessinerTerritoire();
-            }
-        });
-
+        
         function afficherClassement() {
             let classement = document.getElementById('classement');
             classement.innerHTML = '';
-            territoires.sort((a, b) => b.coords.length - a.coords.length).forEach(t => {
+            territoires.sort((a, b) => b.superficie - a.superficie).forEach(t => {
                 let li = document.createElement('li');
                 li.textContent = `${t.nom} - Dirigeant: ${t.dirigeant}`;
                 classement.appendChild(li);
             });
         }
-
-        function sauvegarderDonnees() {
-            localStorage.setItem('points', JSON.stringify(points));
-            localStorage.setItem('territoires', JSON.stringify(territoires));
-        }
-
-        function chargerDonnees() {
-            points.forEach(p => {
-                let marker = L.marker([p.lat, p.lon]).addTo(map);
-                marker.bindPopup(`<b>${p.nom}</b><br>${p.description}`);
-            });
-            territoires.forEach(t => {
-                let polygon = L.polygon(t.coords, { fillColor: '#FF0000', color: '#FF0000', fillOpacity: 0.4 }).addTo(map);
-                drawnItems.addLayer(polygon);
-                polygon.bindPopup(`<b>${t.nom}</b><br>Dirigeant: ${t.dirigeant}`);
-            });
-            afficherClassement();
-        }
-
-        window.onload = chargerDonnees;
     </script>
 </body>
 </html>
