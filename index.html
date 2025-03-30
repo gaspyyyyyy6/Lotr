@@ -277,7 +277,7 @@
         const updateResponse = await fetch(url, {
           method: 'PUT',
           headers: {
-            Authorization: `Bearer ${secrets.TOKEN}`,
+            Authorization: `Bearer ${secrets.token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
