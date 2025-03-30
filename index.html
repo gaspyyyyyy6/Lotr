@@ -33,6 +33,17 @@
             cursor: pointer;
             box-shadow: -2px 0 5px rgba(0,0,0,0.3);
         }
+        .color-picker, .emoji-picker {
+            display: flex;
+            gap: 5px;
+        }
+        .color-picker button, .emoji-picker button {
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
@@ -41,9 +52,14 @@
     <div class="menu" id="menu">
         <button onclick="activerMode('point')">Ajouter un point</button>
         <button onclick="activerMode('territoire')">Dessiner un territoire</button>
+        <div id="options-point" style="display: none;">
+            <div class="color-picker" id="colorPicker"></div>
+            <div class="emoji-picker" id="emojiPicker"></div>
+        </div>
     </div>
     
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
     <script>
         var map = L.map('map', {
             minZoom: 2,
@@ -59,6 +75,8 @@
         map.fitBounds(imageBounds);
 
         let mode = null;
+        let selectedColor = 'red';
+        let selectedEmoji = '⚔️';
 
         function toggleMenu() {
             let menu = document.getElementById('menu');
@@ -67,12 +85,13 @@
 
         function activerMode(nouveauMode) {
             mode = nouveauMode;
+            document.getElementById('options-point').style.display = (mode === 'point') ? 'block' : 'none';
         }
 
-        function ajouterPoint(lat, lon, nom, couleur, emoji) {
+        function ajouterPoint(lat, lon, nom) {
             let icon = L.divIcon({
                 className: 'custom-marker',
-                html: `<div style="font-size: 20px; color: ${couleur};">${emoji}</div>`
+                html: `<div style="font-size: 20px; color: ${selectedColor};">${selectedEmoji}</div>`
             });
             
             let marker = L.marker([lat, lon], { icon: icon, draggable: true }).addTo(map)
@@ -94,8 +113,8 @@
                         lat: layer.getLatLng().lat,
                         lon: layer.getLatLng().lng,
                         nom: layer.getPopup().getContent().replace('<b>', '').replace('</b>', ''),
-                        couleur: layer.options.icon.options.html.match(/color: (.*?);/)[1],
-                        emoji: layer.options.icon.options.html.match(/>(.*?)<\/div>/)[1]
+                        couleur: selectedColor,
+                        emoji: selectedEmoji
                     });
                 }
             });
@@ -105,17 +124,15 @@
         function chargerPoints() {
             let points = JSON.parse(localStorage.getItem('pointsCarte')) || [];
             points.forEach(point => {
-                ajouterPoint(point.lat, point.lon, point.nom, point.couleur, point.emoji);
+                ajouterPoint(point.lat, point.lon, point.nom);
             });
         }
 
         map.on('click', function (e) {
             if (mode === 'point') {
                 let nom = prompt("Nom du point :");
-                let couleur = prompt("Couleur du point (red, blue, green, yellow, white) :", "red");
-                let emoji = prompt("Emoji du point :", "⚔️");
                 if (nom) {
-                    ajouterPoint(e.latlng.lat, e.latlng.lng, nom, couleur, emoji);
+                    ajouterPoint(e.latlng.lat, e.latlng.lng, nom);
                 }
             }
         });
@@ -136,6 +153,9 @@
                 marker: false
             }
         });
+        
+        map.addControl(drawControl);
+        
         map.on(L.Draw.Event.CREATED, function (event) {
             if (mode === 'territoire') {
                 var layer = event.layer;
