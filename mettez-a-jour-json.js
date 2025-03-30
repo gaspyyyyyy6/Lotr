@@ -1,54 +1,64 @@
-const fetch = require('node-fetch'); // On utilise 'node-fetch' pour faire des requêtes HTTP
-const fs = require('fs'); // Pour gérer les fichiers locaux (facultatif dans ce cas, mais utile pour d'autres usages)
-const path = require('path'); // Utilisé pour manipuler les chemins de fichiers (encore une fois, facultatif)
+const fetch = require('node-fetch');
+const fs = require('fs');
 
-const url = 'https://api.github.com/repos/ton-utilisateur/ton-depot/contents/lotr.json'; // Remplace par l'URL de ton fichier JSON sur GitHub
+async function mettreAJourFichierGitHub() {
+  const url = 'https://api.github.com/repos/gaspyyyyyy6/Lotr/contents/lotr.json';
+  const data = { points, territoires }; // Données à sauvegarder
 
-const headers = {
-  'Authorization': `Bearer ${process.env.GIT_TOKEN}`, // On utilise le token secret que tu as configuré dans GitHub Actions
-  'Content-Type': 'application/json'
-};
-
-async function updateFile() {
   try {
-    // 1. Récupérer les données actuelles du fichier 'lotr.json'
-    const response = await fetch(url, { headers });
-    const data = await response.json();
-    const sha = data.sha; // Récupère le SHA du fichier actuel pour pouvoir le mettre à jour
+    console.log("Step 1: Fetching SHA...");
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.GIT_TOKEN}`
+      }
+    });
 
-    // 2. Modifie le contenu du fichier JSON ici (par exemple, tu peux ajouter des points ou des territoires)
-    const updatedContent = JSON.stringify({
-      points: [], // Ajoute ici tes points (ils seront vides dans cet exemple)
-      territoires: [] // Idem pour les territoires
-    }, null, 2); // Le '2' indique qu'on veut une indentation de 2 espaces dans le JSON
+    let sha = null;
 
-    // 3. Encode le contenu mis à jour en Base64 (GitHub exige que le contenu soit encodé ainsi)
-    const base64Content = Buffer.from(updatedContent).toString('base64'); // Conversion en Base64
+    if (response.ok) {
+      const fileData = await response.json();
+      sha = fileData.sha; // SHA du fichier existant
+      console.log("Step 2: SHA récupérée :", sha);
+    } else if (response.status === 404) {
+      console.warn("Fichier non trouvé, il sera créé.");
+    } else {
+      const errorText = await response.text();
+      console.error("Erreur lors de la récupération du fichier:", errorText);
+      alert("Erreur lors de la récupération des données du fichier.");
+      return;
+    }
 
-    // 4. Envoie une requête pour mettre à jour le fichier sur GitHub
+    console.log("Step 3: Encoding content to Base64...");
+    const jsonData = JSON.stringify(data, null, 2); // Conversion en JSON
+    const updatedContent = Buffer.from(jsonData).toString('base64'); // Encodage sécurisé
+    console.log("Step 3: Base64 Content Encoded");
+
+    console.log("Step 4: Sending update request...");
     const updateResponse = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${process.env.GIT_TOKEN}`,
+        Authorization: `Bearer ${process.env.GIT_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        message: 'Mise à jour du fichier JSON', // Le message du commit
-        content: base64Content, // Le contenu encodé en Base64
-        sha: sha // Le SHA du fichier actuel, nécessaire pour effectuer une mise à jour
+        message: 'Mise à jour des points et territoires',
+        content: updatedContent,
+        sha: sha || undefined // Si le fichier n'existe pas, GitHub n'a pas besoin du SHA
       })
     });
 
     if (updateResponse.ok) {
-      console.log("Fichier mis à jour avec succès !");
+      console.log("Step 5: Update successful!");
+      alert("Les données ont été sauvegardées avec succès !");
     } else {
       const errorText = await updateResponse.text();
-      console.error("Erreur lors de la mise à jour du fichier :", errorText);
+      console.error("Step 5: Failed to update file:", errorText);
+      alert(`Échec de la sauvegarde des données : ${errorText}`);
     }
   } catch (error) {
-    console.error("Une erreur est survenue :", error); // Si une erreur survient
+    console.error("Unexpected error:", error);
+    alert(`Une erreur inattendue : ${error.message}`);
   }
 }
 
-// Exécuter la fonction qui met à jour le fichier
-updateFile();
+mettreAJourFichierGitHub();
